@@ -152,5 +152,5 @@ python .\clickhouse-replica.py \
 # Дополнительная информация
 ## Движок таблиц Clickhouse
 * Программа работает с движком таблиц **ReplacingMergeTree**. Этот движок позволяет выполнять операцию UPDATE простой вставкой данных с помощью оператора INSERT. Дубликат записи, созданный ранее будет автоматически удален со временем фоновым процессом Clickhouse. Подробнее [здесь](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree).
-* Удаление записей осуществляется посредством мутаций. Движок **ReplacingMergeTree** не позволяет напрямую удалять данные с помощью оператора DELETE. Поэтмоу используется оператор ALTER TABLE ... DELETE WHERE ... Подробнее [здесь](https://clickhouse.com/docs/en/sql-reference/statements/alter/delete)
+* Удаление записей осуществляется посредством мутаций. Движок **ReplacingMergeTree** не позволяет напрямую удалять данные с помощью оператора DELETE. Поэтому используется оператор ALTER TABLE ... DELETE WHERE ... Подробнее [здесь](https://clickhouse.com/docs/en/sql-reference/statements/alter/delete)
 * Полем сортировки при генерации шаблона таблицы выбирается поле, отмеченное как PRIMARY KEY.
