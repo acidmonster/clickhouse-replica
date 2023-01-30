@@ -11,6 +11,10 @@
 
 # Установка
 * Скачайте последню версию по [ссылке](https://github.com/acidmonster/clickhouse-replica/releases). Распакуйте сценарий в удобное место.
+* Установите модули python: colorama
+```
+  pip install colorama
+```
 
 # Использование
 ```
