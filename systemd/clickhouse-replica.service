@@ -1,0 +1,14 @@
+[Unit]
+Description=Clickhouse Replica deamon
+After=network.target
+
+[Service]
+User=clickhouse-replica
+Group=clickhouse-replica
+Type=simple
+Restart=always
+WorkingDirectory=/opt/clickhouse-replica
+ExecStart=/usr/bin/python3 clickhouse-replica.py --src-host=localhost ...
+
+[Install]
+WantedBy=multi-user.target
