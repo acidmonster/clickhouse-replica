@@ -21,7 +21,7 @@ from colorama import Fore, Back, Style
 colorama.init()
 
 # Инициализация переменных
-version = '1.0'                  # версия программы
+version = '1.1'                  # версия программы
 src_package_size = 1000          # размер пакета, сколько записей за раз будет извлекаться из MySQL в одном запросе SELECT при копировании данных
 dst_package_size = 10000         # размер пакета, сколько записей за раз будет вставляться в Clickhouse за раз при копировании данных
 
@@ -43,7 +43,7 @@ def createParser ():
     # MySQL
     parser.add_argument ('--src-host', default = 'localhost', help = Fore.LIGHTYELLOW_EX + 'Хост MySQL' + Style.RESET_ALL)
     parser.add_argument ('--src-port', default = 3306, type=int , help = Fore.LIGHTYELLOW_EX + 'Порт, на котором доступна MySQL' + Style.RESET_ALL)
-    parser.add_argument ('--src-user', default = '', help = Fore.LIGHTYELLOW_EX + 'Имя пользователя MySQL. Дописать про необходимые привилегии' + Style.RESET_ALL)
+    parser.add_argument ('--src-user', default = '', help = Fore.LIGHTYELLOW_EX + 'Имя пользователя MySQL.' + Style.RESET_ALL)
     parser.add_argument ('--src-password', default = '', help = Fore.LIGHTYELLOW_EX + 'Пароль пользователя MySQL' + Style.RESET_ALL)
     parser.add_argument ('--src-schema', default = 'default', help = Fore.LIGHTYELLOW_EX + 'Имя схемы MySQL (базы данных), из которой будут реплицироватсья данные' + Style.RESET_ALL)
     parser.add_argument ('--src-tables', default = '', help = Fore.LIGHTYELLOW_EX + 'Наименования реплицируемых таблиц. Перечислять через запятую (пример: table_1,table_2,table_3...)' + Style.RESET_ALL)
@@ -51,7 +51,7 @@ def createParser ():
     # Clickhouse
     parser.add_argument ('--dst-host', default = 'localhost', help = Fore.LIGHTYELLOW_EX + 'Хост Clickhouse' + Style.RESET_ALL)
     parser.add_argument ('--dst-port', default = '8123', help = Fore.LIGHTYELLOW_EX + 'Порт, на котором доступна Clickhouse' + Style.RESET_ALL)
-    parser.add_argument ('--dst-user', default = 'default', help = Fore.LIGHTYELLOW_EX + 'Имя пользователя Clickhouse. Дописать про необходимые привилегии' + Style.RESET_ALL)
+    parser.add_argument ('--dst-user', default = 'default', help = Fore.LIGHTYELLOW_EX + 'Имя пользователя Clickhouse.' + Style.RESET_ALL)
     parser.add_argument ('--dst-password', default = '', help = Fore.LIGHTYELLOW_EX + 'Пароль пользователя Clickhouse' + Style.RESET_ALL)
     parser.add_argument ('--dst-schema', default = 'default', help = Fore.LIGHTYELLOW_EX + 'Имя схемы MySQL (базы данных), из которой будут реплицироватсья данные' + Style.RESET_ALL)
 
@@ -62,7 +62,7 @@ def createParser ():
     parser.add_argument ('--replicate', default = False, action = 'store_const', const = True, help = Fore.LIGHTYELLOW_EX + 'Запускает процесс репликации из MySQL в Clickhouse по таблицам, указанным в параметре --src-tables' + Style.RESET_ALL)
     parser.add_argument ('--use-https', default = False, action = 'store_const', const = True, help = Fore.LIGHTYELLOW_EX + 'Указывает на необходимость использования протокола HTTPS при выполнении запросов к Clickhouse' + Style.RESET_ALL)
     parser.add_argument ('--reset-log', default = False, action = 'store_const', const = True, help = Fore.LIGHTYELLOW_EX + 'Укажите, если требуется сбросить позицию и журнал Bin Log' + Style.RESET_ALL)
-
+    parser.add_argument ('--version', default = False, action = 'store_const', const = True, help = Fore.LIGHTYELLOW_EX + 'Показывает версию ПО' + Style.RESET_ALL)
 
     return parser
 
@@ -306,7 +306,7 @@ def event_delete(log_pos: int, log_file: str, event_row: dict, src_object: str, 
         print(Fore.RED + 'Exception occured:{}'.format(e) + Style.RESET_ALL)
         sys.exit(1)
 
-def replicate(namespace): 
+def replicate(namespace):
     """Функция запускает процесс репликации.
     Программа способна запоминать позицию последнего обработанного события и наименование журнала Bin Log.
     При перезапуске программа начинает читать события с той позиции, с которой остановилась после прошлого запуска.
@@ -314,8 +314,9 @@ def replicate(namespace):
     Если требуется запустить репликацию с самого первого доступного события, необходимо дополнительно указать атрибут --reset-log
 
     """
-    # Считываем журнал репликации        
-    bin_log_cfg_name = namespace.src_host + '_bin_log.cfg' 
+
+    # Считываем журнал репликации
+    bin_log_cfg_name = '/opt/clickhouse-replica/' + namespace.src_host + '_bin_log.cfg'
     bin_log_cfg = {}
 
     # Если файл существует и не требуется сбросить журнал,
@@ -334,13 +335,13 @@ def replicate(namespace):
         resume_stream   = True
 
     print(Fore.LIGHTBLUE_EX + 'Clickhouse Replica. Репликация данных.' + Style.RESET_ALL)
-    
+
     # Стрим для чтения данных из MySQL Binary Log
     stream = BinLogStreamReader(
         connection_settings = {
             'host': namespace.src_host,
-            'port': namespace.src_port, 
-            'user': namespace.src_user, 
+            'port': namespace.src_port,
+            'user': namespace.src_user,
             'passwd': namespace.src_password
             },
         server_id           = 1,
@@ -349,22 +350,21 @@ def replicate(namespace):
 
         blocking            = True,
         only_events         = [
-            DeleteRowsEvent, 
-            WriteRowsEvent, 
+            DeleteRowsEvent,
+            WriteRowsEvent,
             UpdateRowsEvent
         ],
         resume_stream       = resume_stream
     )
 
-    # Обрабатываем события
     for binlogevent in stream:
         # Получим текущую позицию и журнал Bin log
         log_pos  = binlogevent.packet.log_pos
         log_file = stream.log_file
-        
+
         for row in binlogevent.rows:
-            # Выполним обработку событий втом случае, 
-            # если схема и таблица 
+            # Выполним обработку событий втом случае,
+            # если схема и таблица
             # соответсвует кортежу src_tables
             src_tables = namespace.src_tables.split(',')
             src_object = namespace.src_schema + '.' + binlogevent.table
@@ -372,8 +372,6 @@ def replicate(namespace):
 
 
             if(binlogevent.schema == namespace.src_schema and binlogevent.table in src_tables):
-                # event = {"schema": binlogevent.schema, "table": binlogevent.table, "log_pos": binlogevent.packet.log_pos}
-                
                 if isinstance(binlogevent, DeleteRowsEvent):
                     event_delete(
                         log_pos     = log_pos,
@@ -381,10 +379,7 @@ def replicate(namespace):
                         event_row   = row,
                         src_object  = src_object,
                         dst_object  = dst_object
-                    )
-                    # event["action"] = "delete"
-                    # event["values"] = dict(row["values"].items())
-                    # event = dict(event.items())
+                        )
                 elif isinstance(binlogevent, UpdateRowsEvent):
                     event_insert(
                         event_name  = 'UPDATE',
@@ -402,7 +397,6 @@ def replicate(namespace):
                         event_row   = row,
                         dst_object  = dst_object
                         )
-
         # Записать позицию и журнал в файл
         bin_log_cfg['log_pos']  = log_pos
         bin_log_cfg['log_file'] = log_file
@@ -410,7 +404,6 @@ def replicate(namespace):
         with open(bin_log_cfg_name, 'wb') as f:
             pickle.dump(bin_log_cfg, f)
 
-        sys.stdout.flush()
     stream.close()
             
  
@@ -524,12 +517,9 @@ def copy_data(namespace):
                 rowcount = src_package_size
             )
 
-            # Обработать записи
-            
+            # Обработать записи            
             package_cursor.execute(query)
             records = package_cursor.fetchall()
-
-            
 
             for record_data in records:
                 current_record  += 1
@@ -607,11 +597,49 @@ def make_pepe():
     print(Fore.GREEN + '           ' + Fore.LIGHTCYAN_EX + '.^7JPGB' + Fore.LIGHTBLUE_EX + '##&&G7777!!~^::.                ' + Style.RESET_ALL)
     print(Fore.GREEN + '                   ' + Fore.LIGHTBLUE_EX + '...                            ' + Style.RESET_ALL)
 
+def print_version():
+    """Функция печатает версию программы и СУБД"""
+
+    # Версия Clickhouse Replica
+    print(Fore.WHITE + 'Clickhouse Replica: ' + Fore.LIGHTYELLOW_EX + version + Style.RESET_ALL)
+
+    m_con = mysql_connection()
+    m_cursor = m_con.cursor()
+    m_cursor.execute("SELECT VERSION() AS m_version")
+    m_version = m_cursor.fetchone()["m_version"]
+    
+    print(Fore.WHITE + 'MySQL: ' + Fore.LIGHTYELLOW_EX + m_version + Style.RESET_ALL)
+
+    # Получим версию Clickhouse
+    protocol = 'http'
+
+    # Если определен ключ --use-https, то используется HTTPS
+    if namespace.use_https: 
+        protocol = 'https'
+        
+    dst_url = '{dst_protocol}://{dst_host}:{dst_port}?user={dst_user}&password={dst_password}&query=SELECT VERSION()'.format(
+        dst_protocol    = protocol,
+        dst_host        = namespace.dst_host,
+        dst_port        = namespace.dst_port,
+        dst_user        = namespace.dst_user,
+        dst_password    = namespace.dst_password
+    )
+
+    # GET-запрос на на сервер Clickhouse
+    r = requests.get(url = dst_url)
+    print(Fore.WHITE + 'Clickhouse: ' + Fore.LIGHTYELLOW_EX + r.text + Style.RESET_ALL)
+
+    return r.status_code
+
 
 if __name__ == "__main__":
     # Создать парсер аргументов командной строки
     parser = createParser()
     namespace = parser.parse_args(sys.argv[1:])
+    
+    if namespace.version:
+        # Отобразить версию ПО
+        print_version()
 
     if namespace.create_sql_tables_template:
         # Сгенерировать SQL-шаблон 
@@ -629,6 +657,4 @@ if __name__ == "__main__":
 
     if namespace.replicate:
         # Запуск репликации 
-        make_pepe()
         replicate(namespace)
-    
