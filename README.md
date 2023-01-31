@@ -10,10 +10,45 @@
  * Протестировано на версиях MySQL 5.7.32-35 и Clickhouse 22.12.3.5
 
 # Установка
+## Подготовка
 * Скачайте последню версию по [ссылке](https://github.com/acidmonster/clickhouse-replica/releases). Распакуйте сценарий в удобное место.
 * Установите модули python: colorama
 ```
   pip install colorama
+```
+## Запуск в качестве демона
+1. Скопируйте файл настройки в каталог systemd:
+```
+cp systemd/clickhouse-replica.service /etc/systemd/system/clickhouse-replica.service
+```
+2. Создайте каталог /opt/clickhouse-replica
+```
+mkdir /opt/clickhouse-replica
+```
+3. Скопируйте сценарий
+```
+cp clickhouse-replica.py /opt/clickhouse-replica/clickhouse-replica.py
+```
+4. Добавьте пользователя, от которого будет запускаться демон.
+```
+useradd clickhouse-replica
+```
+5. Сменить владельца для каталога и содержимого /opt/clickhouse-replica/
+```
+chown clickhouse-replica:clickhouse-replica -R /opt/clickhouse-replica/
+```
+6. Перезагрузить systemctl командой:
+```
+systemctl daemon-reload
+```
+7. Включить созданный сервис
+```
+systemctl enable clickhouse-replica.service
+```
+8. Запустить и проверить работу демона
+```
+systemctl start clickhouse-replica.service
+systemctl status clickhouse-replica.service
 ```
 
 # Использование
